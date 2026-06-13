@@ -3,7 +3,6 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Card from './components/Card';
 
-// Import Views
 import AuthView from './views/authview';
 import HomeView from './views/homeview';
 import BookshelfView from './views/bookshelfview';
@@ -15,7 +14,6 @@ import MapView from './views/mapview';
 import VisitView from './views/visitview';
 import CalendarView from './views/calendarview';
 
-// Firebase & Initial Data
 import { auth, googleProvider } from './firebase';
 import {
   DEFAULT_BLOG_SETTINGS,
@@ -33,13 +31,11 @@ import {
 } from './data';
 
 function App() {
-  // --- Authentication State ---
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState(() => localStorage.getItem('renata_blog_role') || 'visitor'); // 'visitor', 'friend', 'admin'
+  const [role, setRole] = useState(() => localStorage.getItem('renata_blog_role') || 'visitor');
   const [showSetup, setShowSetup] = useState(false);
 
-  // --- View State ---
   const [currentView, setCurrentView] = useState('home-view');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState(null);
@@ -47,7 +43,6 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mediaTypeFilter, setMediaTypeFilter] = useState('all');
 
-  // --- Database States (Loaded from LocalStorage or Data.js) ---
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('renata_blog_settings');
     return saved ? JSON.parse(saved) : DEFAULT_BLOG_SETTINGS;
@@ -96,14 +91,10 @@ function App() {
     return saved ? JSON.parse(saved) : DEFAULT_OWNER_PROFILE;
   });
   
-  // --- Visiting Friend Profile ---
   const [activeProfile, setActiveProfile] = useState(null);
+  const [modalType, setModalType] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
 
-  // --- Modals State ---
-  const [modalType, setModalType] = useState(null); // 'post', 'book', 'media', 'wardrobe', 'spot', 'event', 'settings', 'profile'
-  const [editingItem, setEditingItem] = useState(null); // Item currently being edited (for post, book, etc.)
-
-  // --- Sync States to LocalStorage ---
   useEffect(() => { localStorage.setItem('renata_blog_settings', JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem('renata_blog_posts', JSON.stringify(posts)); }, [posts]);
   useEffect(() => { localStorage.setItem('renata_blog_books', JSON.stringify(books)); }, [books]);
@@ -118,13 +109,11 @@ function App() {
   useEffect(() => { localStorage.setItem('renata_blog_owner_profile', JSON.stringify(ownerProfile)); }, [ownerProfile]);
   useEffect(() => { localStorage.setItem('renata_blog_role', role); }, [role]);
 
-  // --- Listen to Firebase Auth state ---
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((usr) => {
       if (usr) {
         setUser(usr);
         setIsLoggedIn(true);
-        // If logging in as admin email, escalate role
         if (usr.email === 'renata@home.com' || usr.email === 'admin@home.com') {
           setRole('admin');
           const adminProfile = globalUserPool.find(p => p.email && p.email.toLowerCase() === usr.email.toLowerCase()) || DEFAULT_OWNER_PROFILE;
@@ -132,19 +121,18 @@ function App() {
           setShowSetup(false);
         } else {
           setRole('friend');
-          // Check if there is an existing profile in globalUserPool
           const existingProfile = globalUserPool.find(
             p => p.email && p.email.toLowerCase() === usr.email.toLowerCase()
           );
-
           if (existingProfile) {
             setOwnerProfile(existingProfile);
             setShowSetup(false);
           } else {
-            // New user, show setup form and prefill template
             const newProfileTemplate = {
               accountId: usr.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, ''),
               name: usr.displayName || usr.email.split('@')[0],
+              spaceName: (usr.displayName || usr.email.split('@')[0]) + ' 的空間',
+              spaceSubtitle: usr.email.split('@')[0].toUpperCase() + "'S SPACE",
               avatar: usr.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
               email: usr.email,
               nickname: '',
@@ -179,14 +167,11 @@ function App() {
     return () => unsubscribe();
   }, [globalUserPool]);
 
-  // --- Google Login Handler ---
   const handleGoogleLogin = async () => {
-    // Check if running on local file system protocol
     if (window.location.protocol === 'file:') {
       alert("由於 Firebase 驗證安全政策，Google 登入不支援在本機雙擊開啟的網頁檔（file:// 協定）下運作。請將專案部署至 GitHub Pages（http/https 協定）或使用本地伺服器執行網頁後再進行測試！");
       return;
     }
-
     try {
       await auth.signInWithPopup(googleProvider);
     } catch (err) {
@@ -200,7 +185,6 @@ function App() {
     }
   };
 
-  // --- Standard Email/Password Auth Handlers ---
   const handleLogin = async (email, password) => {
     try {
       await auth.signInWithEmailAndPassword(email, password);
@@ -214,7 +198,7 @@ function App() {
     try {
       await auth.createUserWithEmailAndPassword(email, password);
       alert("註冊成功！已自動登入。");
-      setShowSetup(true); // Show profile setup on first registration
+      setShowSetup(true);
     } catch (err) {
       alert(`註冊失敗：${err.message}`);
     }
@@ -237,27 +221,22 @@ function App() {
     alert("已使用訪客身分進入參觀。");
   };
 
-  // --- Setup Profile Handler ---
   const handleSetupProfile = (profileData) => {
     const finalProfile = {
       ...ownerProfile,
       ...profileData
     };
     setOwnerProfile(finalProfile);
-    
-    // Add or update in globalUserPool
     const exists = globalUserPool.some(p => p.email.toLowerCase() === finalProfile.email.toLowerCase());
     if (exists) {
       setGlobalUserPool(globalUserPool.map(p => p.email.toLowerCase() === finalProfile.email.toLowerCase() ? finalProfile : p));
     } else {
       setGlobalUserPool([...globalUserPool, finalProfile]);
     }
-
     setShowSetup(false);
     alert("個人檔案設定成功！歡迎進入您的個人空間！");
   };
 
-  // --- Tab Navigation Trigger ---
   const handleTabChange = (parentTab, subTab = null) => {
     setSearchQuery('');
     setCategoryFilter(parentTab);
@@ -288,21 +267,16 @@ function App() {
     handleTabChange('all');
   };
 
-  // --- Search Handler ---
   const handleSearch = (type, query) => {
     setSearchType(type);
     setSearchQuery(query);
     setCurrentView('home-view');
   };
 
-  // --- CRUD Operations for Database ---
-  // 1. Posts
   const handleAddPost = (postData) => {
     if (postData.id) {
-      // Edit
       setPosts(posts.map(p => p.id === postData.id ? { ...p, ...postData } : p));
     } else {
-      // Add
       const newPost = {
         ...postData,
         id: `post-${Date.now()}`,
@@ -322,7 +296,6 @@ function App() {
     }
   };
 
-  // 2. Comments on Posts
   const handleAddComment = (postId, author, content) => {
     setPosts(posts.map(post => {
       if (post.id === postId) {
@@ -355,15 +328,11 @@ function App() {
     }
   };
 
-  // 3. Books
   const handleAddBook = (bookData) => {
     if (bookData.id) {
       setBooks(books.map(b => b.id === bookData.id ? { ...b, ...bookData } : b));
     } else {
-      const newBook = {
-        ...bookData,
-        id: `book-${Date.now()}`
-      };
+      const newBook = { ...bookData, id: `book-${Date.now()}` };
       setBooks([...books, newBook]);
     }
     setModalType(null);
@@ -374,15 +343,11 @@ function App() {
     setBooks(books.filter(b => b.id !== bookId));
   };
 
-  // 4. Media (DVD/CD)
   const handleAddMedia = (mediaData) => {
     if (mediaData.id) {
       setMedia(media.map(m => m.id === mediaData.id ? { ...m, ...mediaData } : m));
     } else {
-      const newMedia = {
-        ...mediaData,
-        id: `media-${Date.now()}`
-      };
+      const newMedia = { ...mediaData, id: `media-${Date.now()}` };
       setMedia([...media, newMedia]);
     }
     setModalType(null);
@@ -393,15 +358,11 @@ function App() {
     setMedia(media.filter(m => m.id !== mediaId));
   };
 
-  // 5. Wardrobe Items
   const handleAddWardrobeItem = (wData) => {
     if (wData.id) {
       setWardrobeItems(wardrobeItems.map(w => w.id === wData.id ? { ...w, ...wData } : w));
     } else {
-      const newW = {
-        ...wData,
-        id: `w-${Date.now()}`
-      };
+      const newW = { ...wData, id: `w-${Date.now()}` };
       setWardrobeItems([...wardrobeItems, newW]);
     }
     setModalType(null);
@@ -412,12 +373,8 @@ function App() {
     setWardrobeItems(wardrobeItems.filter(w => w.id !== wId));
   };
 
-  // 6. Map Spots
   const handleAddSpot = (spotData) => {
-    const newSpot = {
-      ...spotData,
-      id: `spot-${Date.now()}`
-    };
+    const newSpot = { ...spotData, id: `spot-${Date.now()}` };
     setSpots([...spots, newSpot]);
     setModalType(null);
   };
@@ -426,12 +383,8 @@ function App() {
     setSpots(spots.filter(s => s.id !== spotId));
   };
 
-  // 7. Calendar Events
   const handleAddEvent = (evtData) => {
-    const newEvt = {
-      ...evtData,
-      id: `evt-${Date.now()}`
-    };
+    const newEvt = { ...evtData, id: `evt-${Date.now()}` };
     setEvents([...events, newEvt]);
     setModalType(null);
   };
@@ -440,11 +393,9 @@ function App() {
     setEvents(events.filter(e => e.id !== evtId));
   };
 
-  // 8. Friends Management
   const handleAddFriend = () => {
     const accountId = prompt("請輸入好友的 帳號 ID (AccountId)：");
     if (!accountId) return;
-    
     const friendObj = globalUserPool.find(p => p.accountId && p.accountId.toLowerCase() === accountId.toLowerCase().trim());
     if (friendObj) {
       if (friends.some(f => f.accountId.toLowerCase() === friendObj.accountId.toLowerCase())) {
@@ -454,7 +405,6 @@ function App() {
       setFriends([...friends, friendObj]);
       alert(`已成功將 ${friendObj.name} 加入好友活頁夾！`);
     } else {
-      // Mock create a profile and add it to globalUserPool if not found
       const newFriend = {
         id: `friend-${Date.now()}`,
         accountId: accountId.toLowerCase().trim(),
@@ -489,7 +439,6 @@ function App() {
     }
   };
 
-  // --- Backup Handlers ---
   const handleBackupExport = () => {
     const dataJsString = `// nknock - 備份資料
 export const DEFAULT_BLOG_SETTINGS = ${JSON.stringify(settings, null, 2)};
@@ -520,7 +469,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         const reader = new FileReader();
         reader.onload = (event) => {
           try {
-            // Very basic parsing for demo backup restore
             alert("匯入成功！網頁即將重新整理。");
             window.location.reload();
           } catch (err) {
@@ -533,7 +481,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
     input.click();
   };
 
-  // --- Room Visit Handlers ---
   const handleVisitFriendRoom = (friend) => {
     setActiveProfile(friend);
     setCurrentView('home-view');
@@ -546,20 +493,17 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
     alert("已返回您自己的房間。");
   };
 
-  // --- Dynamic Data Source based on Active Visit Profile ---
   const postsSource = activeProfile ? (activeProfile.posts || []) : posts;
   const booksSource = activeProfile ? (activeProfile.books || []) : books;
   const mediaSource = activeProfile ? (activeProfile.media || []) : media;
   const wardrobeSource = activeProfile ? (activeProfile.wardrobeItems || []) : wardrobeItems;
   const notesSource = activeProfile ? (activeProfile.notes || "") : notes;
   const todosSource = activeProfile ? (activeProfile.todos || []) : todos;
-  const spotsSource = activeProfile ? [] : spots; // Keep spots read-only or empty for others
-  const eventsSource = activeProfile ? [] : events; // Keep events read-only or empty for others
+  const spotsSource = activeProfile ? [] : spots;
+  const eventsSource = activeProfile ? [] : events;
 
-  // Get popular posts for Sidebar
   const popularPosts = posts.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
 
-  // --- Active View Router ---
   const renderActiveView = () => {
     switch (currentView) {
       case 'home-view':
@@ -662,7 +606,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
     }
   };
 
-  // --- Render Auth View if not Logged In OR if we need to show Profile Setup ---
   if (!isLoggedIn || showSetup) {
     return (
       <AuthView 
@@ -678,13 +621,10 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
     );
   }
 
-  // --- Main Layout ---
-  // Sort posts to find latest featured
   const latestFeaturedPost = postsSource[0];
 
   return (
     <div className="app-container">
-      {/* Dynamic Background Bubbles */}
       <div className="bubble-bg-container">
         <div className="bubble-bg-circle bubble-bg-primary"></div>
         <div className="bubble-bg-circle bubble-bg-secondary"></div>
@@ -692,6 +632,8 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
 
       <Navbar 
         settings={settings}
+        activeProfile={activeProfile}
+        ownerProfile={ownerProfile}
         currentView={currentView}
         categoryFilter={categoryFilter}
         onTabChange={handleTabChange}
@@ -702,9 +644,7 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
       />
 
       <div className="main-container three-column-layout">
-        {/* Left Column (Layout Frame) */}
         <aside className="column" id="left-column">
-          {/* Latest Post Card */}
           <Card title={<span><i className="fa-solid fa-star"></i> 最新消息</span>} style={{ padding: '10px' }}>
             <div 
               className="featured-post-card" 
@@ -732,7 +672,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
             </div>
           </Card>
 
-          {/* Recent Wardrobe Additions */}
           <Card title={<span><i className="fa-solid fa-shirt"></i> 最近配搭 (衣櫃)</span>}>
             <ul className="wardrobe-post-list" id="wardrobe-posts-box" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {wardrobeSource.slice(0, 3).map(item => (
@@ -759,12 +698,10 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
           </Card>
         </aside>
 
-        {/* Center Column (Active View Router) */}
         <main className="column" id="center-column">
           {renderActiveView()}
         </main>
 
-        {/* Right Column (Sidebar) */}
         <Sidebar 
           settings={settings}
           ownerProfile={activeProfile || ownerProfile}
@@ -784,16 +721,10 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       </div>
 
-      {/* Footer */}
       <footer style={{ textAlign: 'center', padding: '20px 0', fontSize: '11.5px', color: 'var(--text-light)', marginTop: '20px' }}>
         <p>© 2026 Renata's Home. All rights reserved. Powered by React + Vite.</p>
       </footer>
 
-      {/* ========================================== */}
-      {/*              ALL MODALS                   */}
-      {/* ========================================== */}
-
-      {/* 1. Write / Edit Post Modal */}
       {modalType === 'post' && (
         <PostModal 
           post={editingItem}
@@ -802,7 +733,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 2. Add / Edit Book Modal */}
       {modalType === 'book' && (
         <BookModal 
           book={editingItem}
@@ -811,7 +741,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 3. Add / Edit Media Modal */}
       {modalType === 'media' && (
         <MediaModal 
           media={editingItem}
@@ -820,7 +749,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 4. Add / Edit Wardrobe Modal */}
       {modalType === 'wardrobe' && (
         <WardrobeModal 
           item={editingItem}
@@ -829,7 +757,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 5. Add Spot Modal */}
       {modalType && modalType.type === 'spot' && (
         <SpotModal 
           lat={modalType.lat}
@@ -839,7 +766,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 6. Add Event Modal */}
       {modalType && modalType.type === 'event' && (
         <EventModal 
           date={modalType.date}
@@ -848,7 +774,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 7. Settings Modal */}
       {modalType === 'settings' && (
         <SettingsModal 
           settings={settings}
@@ -861,7 +786,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
         />
       )}
 
-      {/* 8. Edit Profile Modal */}
       {modalType === 'profile' && (
         <ProfileModal 
           profile={ownerProfile}
@@ -869,7 +793,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
           onSubmit={(newProfile) => {
             const updated = { ...ownerProfile, ...newProfile };
             setOwnerProfile(updated);
-            // Sync to globalUserPool
             setGlobalUserPool(globalUserPool.map(p => p.email.toLowerCase() === updated.email.toLowerCase() ? updated : p));
             setModalType(null);
             alert("個人檔案儲存成功！");
@@ -880,11 +803,6 @@ export const DEFAULT_WARDROBE_ITEMS = ${JSON.stringify(wardrobeItems, null, 2)};
   );
 }
 
-// =========================================================
-//                  SUB-MODALS COMPONENTS
-// =========================================================
-
-// Image Helper: handles local file input, size limit <= 1MB, converts to Base64
 const FileInputBase64 = ({ value, onChange, label = "上傳圖片" }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -919,7 +837,6 @@ const FileInputBase64 = ({ value, onChange, label = "上傳圖片" }) => {
   );
 };
 
-// 1. Post Modal
 const PostModal = ({ post, onClose, onSubmit }) => {
   const categoriesMap = {
     '消息': ['話題', '情感', '夢境'],
@@ -939,7 +856,6 @@ const PostModal = ({ post, onClose, onSubmit }) => {
   const [tags, setTags] = useState(post ? (post.tags || []).join(', ') : '');
   const [isPrivate, setIsPrivate] = useState(post ? post.isPrivate : false);
 
-  // Sync subcategory options when editing or switching category
   useEffect(() => {
     if (post && post.category === category) {
       setSubcategory(post.subcategory);
@@ -1021,7 +937,6 @@ const PostModal = ({ post, onClose, onSubmit }) => {
   );
 };
 
-// 2. Book Modal
 const BookModal = ({ book, onClose, onSubmit }) => {
   const [title, setTitle] = useState(book ? book.title : '');
   const [author, setAuthor] = useState(book ? book.author : '');
@@ -1075,7 +990,6 @@ const BookModal = ({ book, onClose, onSubmit }) => {
   );
 };
 
-// 3. Media Modal (DVD/CD)
 const MediaModal = ({ media, onClose, onSubmit }) => {
   const [title, setTitle] = useState(media ? media.title : '');
   const [type, setType] = useState(media ? media.type : 'movie');
@@ -1151,7 +1065,6 @@ const MediaModal = ({ media, onClose, onSubmit }) => {
   );
 };
 
-// 4. Wardrobe Modal
 const WardrobeModal = ({ item, onClose, onSubmit }) => {
   const [title, setTitle] = useState(item ? item.title : '');
   const [brand, setBrand] = useState(item ? item.brand : '');
@@ -1209,7 +1122,6 @@ const WardrobeModal = ({ item, onClose, onSubmit }) => {
   );
 };
 
-// 5. Spot Modal (Map)
 const SpotModal = ({ lat, lng, onClose, onSubmit }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -1259,7 +1171,6 @@ const SpotModal = ({ lat, lng, onClose, onSubmit }) => {
   );
 };
 
-// 6. Event Modal (Calendar)
 const EventModal = ({ date, onClose, onSubmit }) => {
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -1303,7 +1214,6 @@ const EventModal = ({ date, onClose, onSubmit }) => {
   );
 };
 
-// 7. Settings Modal
 const SettingsModal = ({ settings, onClose, onSubmit }) => {
   const [blogTitle, setBlogTitle] = useState(settings.blogTitle || 'nknock');
   const [blogSubtitle, setBlogSubtitle] = useState(settings.blogSubtitle || 'nknock');
@@ -1349,7 +1259,6 @@ const SettingsModal = ({ settings, onClose, onSubmit }) => {
   );
 };
 
-// 8. Profile Modal
 const ProfileModal = ({ profile, onClose, onSubmit }) => {
   const [name, setName] = useState(profile.name || '');
   const [nickname, setNickname] = useState(profile.nickname || '');
@@ -1357,6 +1266,8 @@ const ProfileModal = ({ profile, onClose, onSubmit }) => {
   const [bio, setBio] = useState(profile.ownerBio || '');
   const [status, setStatus] = useState(profile.social?.status || '');
   const [talent, setTalent] = useState(profile.social?.talent || '');
+  const [spaceName, setSpaceName] = useState(profile.spaceName || '');
+  const [spaceSubtitle, setSpaceSubtitle] = useState(profile.spaceSubtitle || '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -1365,6 +1276,8 @@ const ProfileModal = ({ profile, onClose, onSubmit }) => {
       nickname: nickname.trim(),
       avatar,
       ownerBio: bio.trim(),
+      spaceName: spaceName.trim(),
+      spaceSubtitle: spaceSubtitle.trim(),
       social: {
         ...(profile.social || {}),
         status: status.trim(),
@@ -1386,6 +1299,14 @@ const ProfileModal = ({ profile, onClose, onSubmit }) => {
           <div className="form-group" style={{ textAlign: 'left' }}>
             <label className="form-label" style={{ fontWeight: 'bold', fontSize: '12px' }}>暱稱</label>
             <input type="text" className="form-input" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          </div>
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label className="form-label" style={{ fontWeight: 'bold', fontSize: '12px' }}>自訂空間名稱</label>
+            <input type="text" className="form-input" value={spaceName} onChange={(e) => setSpaceName(e.target.value)} placeholder="例：立華不動產 的空間" />
+          </div>
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label className="form-label" style={{ fontWeight: 'bold', fontSize: '12px' }}>自訂空間英文名稱</label>
+            <input type="text" className="form-input" value={spaceSubtitle} onChange={(e) => setSpaceSubtitle(e.target.value)} placeholder="例：HAPPYCAR'S SPACE" />
           </div>
           <FileInputBase64 value={avatar} onChange={setAvatar} label="頭像圖片" />
           <div className="form-group" style={{ textAlign: 'left' }}>
