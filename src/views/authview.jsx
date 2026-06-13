@@ -282,7 +282,7 @@ const AuthView = ({
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            
+
             <div className="form-group" style={{ textAlign: 'left' }}>
               <label className="form-label" style={{ fontWeight: 600, fontSize: '11px', marginBottom: '4px', display: 'block' }}>自訂空間名稱</label>
               <input 
