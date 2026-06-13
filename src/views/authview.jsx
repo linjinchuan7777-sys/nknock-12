@@ -31,14 +31,19 @@ const AuthView = ({
   const [birthday, setBirthday] = useState('');
   const [horoscope, setHoroscope] = useState('');
   const [city, setCity] = useState('');
+  const [spaceName, setSpaceName] = useState('');
+  const [spaceSubtitle, setSpaceSubtitle] = useState('');
 
   // Pre-fill setup fields if user changes
   useEffect(() => {
     if (user && showSetup) {
-      setName(user.displayName || user.email.split('@')[0]);
+      const defaultName = user.displayName || user.email.split('@')[0];
+      setName(defaultName);
       setAvatar(user.photoURL || '');
       const defaultAccountId = user.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       setAccountId(defaultAccountId);
+      setSpaceName(defaultName + ' 的空間');
+      setSpaceSubtitle(defaultAccountId.toUpperCase() + "'S SPACE");
     }
   }, [user, showSetup]);
 
@@ -49,12 +54,12 @@ const AuthView = ({
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (regPassword.length < 6) {
-      alert("密碼長度必須至少為 6 個字元！");
+    if (regPassword !== regPasswordConfirm) {
+      alert("兩次輸入的密碼不一致！");
       return;
     }
-    if (regPassword !== regPasswordConfirm) {
-      alert("密碼與確認密碼不一致！");
+    if (regPassword.length < 6) {
+      alert("密碼安全長度不足，至少需 6 個字元！");
       return;
     }
     if (onRegister) onRegister(regEmail, regPassword);
@@ -62,25 +67,24 @@ const AuthView = ({
 
   const handleSetupSubmit = (e) => {
     e.preventDefault();
-    if (!accountId.trim()) {
-      alert("請輸入個人帳號 ID！");
+    if (!accountId.trim() || !name.trim()) {
+      alert("個人帳號 ID 與站長名稱為必填項目！");
       return;
     }
-    if (!name.trim()) {
-      alert("請輸入站長名稱！");
-      return;
-    }
+    
     if (onSetupProfile) {
       onSetupProfile({
-        accountId,
-        name,
-        avatar,
-        nickname,
-        gender,
-        bloodType,
-        birthday,
-        horoscope,
-        city
+        accountId: accountId.trim().toLowerCase(),
+        name: name.trim(),
+        avatar: avatar.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+        nickname: nickname.trim(),
+        spaceName: spaceName.trim(),
+        spaceSubtitle: spaceSubtitle.trim(),
+        gender: gender.trim() || '保密',
+        bloodType: bloodType.trim() || 'O',
+        birthday: birthday,
+        horoscope: horoscope.trim() || '雙子座',
+        city: city.trim()
       });
     }
   };
@@ -89,7 +93,7 @@ const AuthView = ({
     const file = e.target.files[0];
     if (file) {
       if (file.size > 1024 * 1024) {
-        alert("圖片大小不能超過 1MB，以避免瀏覽器儲存空間不足！");
+        alert("頭像圖片容量不能超過 1MB！");
         return;
       }
       const reader = new FileReader();
@@ -104,7 +108,28 @@ const AuthView = ({
     <div id="auth-view" className="auth-container" style={{ display: 'flex' }}>
       <div className="auth-card">
         <div className="auth-logo">
-          <i className="fa-solid fa-sun-plant-wilt" style={{ fontSize: '32px', color: 'var(--accent-color)', marginBottom: '8px' }}></i>
+          <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', marginBottom: '8px' }}>
+            <rect width="100" height="100" fill="none" />
+            <g>
+              {Array.from({ length: 180 }).map((_, n) => {
+                const theta = n * 137.5 * (Math.PI / 180);
+                const r = 3.2 * Math.sqrt(n);
+                const x = 50 + r * Math.cos(theta);
+                const y = 50 + r * Math.sin(theta);
+                const hue = Math.floor((n * 137.5) % 360);
+                const dotRadius = 0.8 + 1.2 * Math.sqrt(n / 180);
+                return (
+                  <circle 
+                    key={n} 
+                    cx={x.toFixed(3)} 
+                    cy={y.toFixed(3)} 
+                    r={dotRadius.toFixed(2)} 
+                    fill={`hsl(${hue}, 85%, 55%)`} 
+                  />
+                );
+              })}
+            </g>
+          </svg>
           <h2>nknock</h2>
           <p>nknock</p>
         </div>
@@ -255,6 +280,30 @@ const AuthView = ({
                 style={{ width: '100%', boxSizing: 'border-box' }}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group" style={{ textAlign: 'left' }}>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '11px', marginBottom: '4px', display: 'block' }}>自訂空間名稱</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="例如：小明 的空間" 
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={spaceName}
+                onChange={(e) => setSpaceName(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ textAlign: 'left' }}>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '11px', marginBottom: '4px', display: 'block' }}>自訂空間英文名稱</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="例如：MING'S SPACE" 
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                value={spaceSubtitle}
+                onChange={(e) => setSpaceSubtitle(e.target.value)}
               />
             </div>
             
