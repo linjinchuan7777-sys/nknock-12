@@ -311,7 +311,15 @@ export const DEFAULT_WARDROBE_ITEMS = [
     desc: "寬邊遮陽草帽，夏日度假風。"
   }
 ];
-
+export const DEFAULT_OWNER_PROFILE = {
+  accountId: "renata123",
+  name: "雷娜塔",
+  nickname: "娜塔",
+  spaceName: "立華不動產 的空間",
+  spaceSubtitle: "HAPPYCAR'S SPACE",
+  bloodType: "A",
+  birthday: "1996-06-01",
+  // 以下保持原樣 ...
 export const DEFAULT_OWNER_PROFILE = {
   accountId: "renata123",
   name: "雷娜塔",
