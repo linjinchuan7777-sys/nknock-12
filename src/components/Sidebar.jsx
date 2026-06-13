@@ -83,7 +83,7 @@ const Sidebar = ({
           >
             <i className="fa-solid fa-edit"></i> 編輯資訊
           </button>
-          {isAdmin && (
+          {(isAdmin || isFriend) && (
             <button 
               className="btn btn-primary btn-sm" 
               id="sidebar-write-post-btn" 
@@ -105,7 +105,7 @@ const Sidebar = ({
           style={{ display: 'block' }}
           title={<span><i className="fa-solid fa-screwdriver-wrench"></i> {isAdmin ? '管理員控制台' : '好友小工具'}</span>}
         >
-          {isAdmin && (
+          {(isAdmin || isFriend) && (
             <button className="admin-card-btn" onClick={onWritePost}>
               <i className="fa-solid fa-pen-to-square"></i> 撰寫新貼文
             </button>
